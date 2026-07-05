@@ -70,10 +70,12 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rbmr.simpletodos.data.TODO_LIST_NAME_MAX_LENGTH
 import com.rbmr.simpletodos.data.TodoList
+import com.rbmr.simpletodos.data.TodoListWithItems
 import com.rbmr.simpletodos.ui.theme.ThemeMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -84,7 +86,7 @@ import java.io.InputStreamReader
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun ManageScreen(
-    lists: List<TodoList>,
+    lists: List<TodoListWithItems>,
     viewModel: TodoViewModel,
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -135,6 +137,7 @@ fun ManageScreen(
                 Text(
                     text = "Manage",
                     style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .weight(1f)
                         .padding(vertical = 8.dp),
@@ -192,7 +195,7 @@ fun ManageScreen(
                             onDragEnd = {
                                 dragDropState.onDragInterrupted()
                                 overscrollJob?.cancel()
-                                viewModel.reorderLists(localLists.value)
+                                viewModel.reorderLists(localLists.value.map { it.list })
                             },
                             onDragCancel = {
                                 dragDropState.onDragInterrupted()
@@ -201,14 +204,15 @@ fun ManageScreen(
                         )
                     },
             ) {
-                itemsIndexed(localLists.value, key = { _, list -> list.id.toString() }) { index, list ->
+                itemsIndexed(localLists.value, key = { _, listWithItems -> listWithItems.list.id.toString() }) { index, listWithItems ->
                     DraggableItem(dragDropState = dragDropState, index = index) { isDragging ->
                         ManageListRow(
-                            list = list,
+                            list = listWithItems.list,
+                            itemCount = listWithItems.items.size,
                             isDragging = isDragging,
                             onOpen = { onOpenList(index) },
-                            onRename = { newName -> viewModel.renameList(list, newName) },
-                            onDeleteRequest = { listPendingDelete = list },
+                            onRename = { newName -> viewModel.renameList(listWithItems.list, newName) },
+                            onDeleteRequest = { listPendingDelete = listWithItems.list },
                         )
                     }
                 }
@@ -279,6 +283,7 @@ private fun ThemeModeSelector(themeMode: ThemeMode, onThemeModeChange: (ThemeMod
 @Composable
 private fun ManageListRow(
     list: TodoList,
+    itemCount: Int,
     isDragging: Boolean,
     onOpen: () -> Unit,
     onRename: (String) -> Unit,
@@ -380,6 +385,13 @@ private fun ManageListRow(
                         ),
                 )
             }
+
+            Text(
+                text = itemCount.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
 
             IconButton(onClick = onOpen) {
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open list")

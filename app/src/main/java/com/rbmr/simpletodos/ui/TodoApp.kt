@@ -111,7 +111,7 @@ fun TodoApp(
                 )
             } else {
                 ManageScreen(
-                    lists = listsWithItems.map { it.list },
+                    lists = listsWithItems,
                     viewModel = viewModel,
                     themeMode = themeMode,
                     onThemeModeChange = onThemeModeChange,

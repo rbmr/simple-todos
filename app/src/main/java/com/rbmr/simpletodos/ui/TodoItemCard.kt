@@ -14,17 +14,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +41,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -149,7 +154,9 @@ private fun EditableLabelField(
     onDoneEditing: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var text by remember(item.id) { mutableStateOf(item.label) }
+    var fieldValue by remember(item.id) {
+        mutableStateOf(TextFieldValue(item.label, selection = TextRange(0, item.label.length)))
+    }
     var committed by remember(item.id) { mutableStateOf(false) }
     var hasBeenFocused by remember(item.id) { mutableStateOf(false) }
     var isFocusedNow by remember(item.id) { mutableStateOf(false) }
@@ -157,7 +164,7 @@ private fun EditableLabelField(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val latestText = rememberUpdatedState(text)
+    val latestText = rememberUpdatedState(fieldValue.text)
     val density = LocalDensity.current
     val imeVisible = WindowInsets.ime.getBottom(density) > 0
 
@@ -165,9 +172,9 @@ private fun EditableLabelField(
         focusRequester.requestFocus()
     }
 
-    LaunchedEffect(text) {
+    LaunchedEffect(fieldValue.text) {
         delay(300)
-        onLiveLabelChange(text)
+        onLiveLabelChange(fieldValue.text)
     }
 
     // If the keyboard gets dismissed (back gesture, swipe-down, tapping outside) without
@@ -184,10 +191,11 @@ private fun EditableLabelField(
         }
     }
 
-    TextField(
-        value = text,
-        onValueChange = { text = it },
+    BasicTextField(
+        value = fieldValue,
+        onValueChange = { fieldValue = it },
         modifier = modifier
+            .padding(vertical = 16.dp)
             .focusRequester(focusRequester)
             .onFocusChanged { state ->
                 isFocusedNow = state.isFocused
@@ -199,12 +207,8 @@ private fun EditableLabelField(
                 }
             },
         singleLine = true,
-        colors = TextFieldDefaults.colors(
-            unfocusedContainerColor = Color.Transparent,
-            focusedContainerColor = Color.Transparent,
-            unfocusedIndicatorColor = Color.Transparent,
-            focusedIndicatorColor = Color.Transparent,
-        ),
+        textStyle = LocalTextStyle.current.merge(TextStyle(color = LocalContentColor.current)),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(
             onDone = {
