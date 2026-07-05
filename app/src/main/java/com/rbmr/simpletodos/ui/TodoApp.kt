@@ -75,17 +75,6 @@ fun TodoApp(viewModel: TodoViewModel) {
                     onAddItem = { onCreated -> viewModel.addItem(listWithItems.list.id, onCreated) },
                     onRenameList = { newName -> viewModel.renameList(listWithItems.list, newName) },
                     onMarkAllFinished = { finished -> viewModel.setAllFinished(listWithItems.list.id, finished) },
-                    onTransferItem = { item, direction ->
-                        val targetPage = page + direction
-                        if (targetPage in 0 until listCount) {
-                            val targetList = listsWithItems[targetPage].list
-                            val insertIndex = if (direction < 0) 0 else Int.MAX_VALUE
-                            viewModel.moveItem(item, targetList.id, insertIndex)
-                            scope.launch { pagerState.animateScrollToPage(targetPage) }
-                        }
-                    },
-                    hasPreviousList = page > 0,
-                    hasNextList = page < listCount - 1,
                 )
             } else {
                 ManageListsScreen(

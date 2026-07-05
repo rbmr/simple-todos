@@ -154,7 +154,7 @@ fun ManageListsScreen(
                         onDragStart = { offset -> dragDropState.onDragStart(offset) },
                         onDrag = { change, dragAmount ->
                             change.consume()
-                            dragDropState.onDrag(dragAmount, change.position.x)
+                            dragDropState.onDrag(dragAmount)
                             if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
                             dragDropState.checkForOverScroll()
                                 .takeIf { it != 0f }

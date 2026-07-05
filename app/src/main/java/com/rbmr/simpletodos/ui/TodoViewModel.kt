@@ -77,10 +77,6 @@ class TodoViewModel(private val repository: TodoRepository) : ViewModel() {
         viewModelScope.launch { repository.reorderItems(orderedItems) }
     }
 
-    fun moveItem(item: TodoItem, targetListId: UUID, newIndex: Int) {
-        viewModelScope.launch { repository.moveItem(item, targetListId, newIndex) }
-    }
-
     suspend fun exportJson(): String = withContext(Dispatchers.IO) { repository.exportJson() }
 
     suspend fun importJson(content: String) = withContext(Dispatchers.IO) { repository.importJson(content) }
