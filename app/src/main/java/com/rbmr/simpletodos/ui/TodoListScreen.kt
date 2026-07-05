@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,17 +19,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -42,11 +44,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -69,6 +72,7 @@ fun TodoListScreen(
     onAddItem: ((TodoItem) -> Unit) -> Unit,
     onRenameList: (String) -> Unit,
     onMarkAllFinished: (Boolean) -> Unit,
+    onJumpToManage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val list = listWithItems.list
@@ -113,54 +117,58 @@ fun TodoListScreen(
             onRename = onRenameList,
             onToggleMarkAll = { onMarkAllFinished(it) },
             allFinished = items.isNotEmpty() && items.all { it.finished },
+            onJumpToManage = onJumpToManage,
         )
 
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding()
-                .pointerInputDragReorder(
-                    dragDropState = dragDropState,
-                    scope = scope,
-                    overscrollJobHolder = { overscrollJob },
-                    setOverscrollJob = { overscrollJob = it },
-                    onDragEnd = { onReorderItems(localItems.value) },
-                ),
-        ) {
-            itemsIndexed(localItems.value, key = { _, item -> item.id.toString() }) { index, item ->
-                DraggableItem(dragDropState = dragDropState, index = index) { isDragging ->
-                    TodoItemCard(
-                        item = item,
-                        isEditing = editingItemId == item.id,
-                        isDragging = isDragging,
-                        onStartEditing = { editingItemId = item.id },
-                        onLiveLabelChange = { onLiveLabelChange(item, it) },
-                        onCommitLabel = { newLabel ->
-                            onCommitLabel(item, newLabel)
-                            if (editingItemId == item.id) editingItemId = null
-                        },
-                        onToggle = { onToggleItem(item) },
-                        onDelete = { onDeleteItem(item) },
-                        onDoneEditing = { newLabel ->
-                            onCommitLabel(item, newLabel)
-                            if (newLabel.isNotBlank()) {
-                                onAddItem { newItem -> editingItemId = newItem.id }
-                            } else {
-                                editingItemId = null
-                            }
-                        },
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .imePadding()
+                    .pointerInputDragReorder(
+                        dragDropState = dragDropState,
+                        scope = scope,
+                        overscrollJobHolder = { overscrollJob },
+                        setOverscrollJob = { overscrollJob = it },
+                        onDragEnd = { onReorderItems(localItems.value) },
+                    ),
+            ) {
+                itemsIndexed(localItems.value, key = { _, item -> item.id.toString() }) { index, item ->
+                    DraggableItem(dragDropState = dragDropState, index = index) { isDragging ->
+                        TodoItemCard(
+                            item = item,
+                            isEditing = editingItemId == item.id,
+                            isDragging = isDragging,
+                            onStartEditing = { editingItemId = item.id },
+                            onLiveLabelChange = { onLiveLabelChange(item, it) },
+                            onCommitLabel = { newLabel ->
+                                onCommitLabel(item, newLabel)
+                                if (editingItemId == item.id) editingItemId = null
+                            },
+                            onToggle = { onToggleItem(item) },
+                            onDelete = { onDeleteItem(item) },
+                            onDoneEditing = { newLabel ->
+                                onCommitLabel(item, newLabel)
+                                if (newLabel.isNotBlank()) {
+                                    onAddItem { newItem -> editingItemId = newItem.id }
+                                } else {
+                                    editingItemId = null
+                                }
+                            },
+                        )
+                    }
+                }
+                item(key = "add-item-card") {
+                    AddItemCard(
+                        text = "Add item",
+                        onClick = { onAddItem { newItem -> editingItemId = newItem.id } },
                     )
                 }
             }
-            item(key = "add-item-card") {
-                AddItemCard(
-                    text = "Add item",
-                    onClick = { onAddItem { newItem -> editingItemId = newItem.id } },
-                )
-            }
+            ScrollToEdgeButtons(listState = listState, scope = scope)
         }
     }
 }
@@ -213,21 +221,25 @@ private fun ListTitle(
     allFinished: Boolean,
     onRename: (String) -> Unit,
     onToggleMarkAll: (Boolean) -> Unit,
+    onJumpToManage: () -> Unit,
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var text by remember { mutableStateOf(name) }
     LaunchedEffect(name) { if (!isEditing) text = name }
 
-    androidx.compose.material3.Surface(
-        tonalElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
+    AppHeader(
+        trailing = {
+            IconButton(onClick = onJumpToManage) {
+                Icon(Icons.Default.Settings, contentDescription = "Manage")
+            }
+            IconButton(onClick = { onToggleMarkAll(!allFinished) }) {
+                Icon(
+                    imageVector = if (allFinished) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = if (allFinished) "Unmark all as finished" else "Mark all as finished",
+                )
+            }
+        },
+        title = {
             if (isEditing) {
                 val focusRequester = remember { FocusRequester() }
                 val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -257,11 +269,12 @@ private fun ListTitle(
                     }
                 }
                 LaunchedEffect(Unit) { focusRequester.requestFocus() }
-                TextField(
+                BasicTextField(
                     value = fieldValue,
                     onValueChange = { if (it.text.length <= TODO_LIST_NAME_MAX_LENGTH) fieldValue = it },
                     modifier = Modifier
                         .weight(1f)
+                        .padding(vertical = 8.dp)
                         .focusRequester(focusRequester)
                         .onFocusChanged { state ->
                             isFocusedNow = state.isFocused
@@ -272,11 +285,8 @@ private fun ListTitle(
                             }
                         },
                     singleLine = true,
-                    textStyle = MaterialTheme.typography.titleLarge,
-                    colors = TextFieldDefaults.colors(
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedContainerColor = Color.Transparent,
-                    ),
+                    textStyle = MaterialTheme.typography.titleLarge.merge(TextStyle(color = LocalContentColor.current)),
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
                         commit()
@@ -295,12 +305,6 @@ private fun ListTitle(
                         .clickable { isEditing = true },
                 )
             }
-            IconButton(onClick = { onToggleMarkAll(!allFinished) }) {
-                Icon(
-                    imageVector = if (allFinished) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                    contentDescription = if (allFinished) "Unmark all as finished" else "Mark all as finished",
-                )
-            }
-        }
-    }
+        },
+    )
 }

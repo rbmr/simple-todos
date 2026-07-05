@@ -8,25 +8,34 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Reorder
+import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,6 +43,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -55,25 +67,29 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rbmr.simpletodos.data.TODO_LIST_NAME_MAX_LENGTH
 import com.rbmr.simpletodos.data.TodoList
+import com.rbmr.simpletodos.data.TodoListWithItems
+import com.rbmr.simpletodos.ui.theme.ThemeMode
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun ManageListsScreen(
-    lists: List<TodoList>,
+fun ManageScreen(
+    lists: List<TodoListWithItems>,
     viewModel: TodoViewModel,
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
     onOpenList: (Int) -> Unit,
 ) {
     val context = LocalContext.current
@@ -116,79 +132,95 @@ fun ManageListsScreen(
     )
 
     Column(modifier = Modifier.fillMaxSize()) {
-        androidx.compose.material3.Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
-            Column {
+        AppHeader(
+            title = {
                 Text(
-                    text = "Manage Lists",
+                    text = "Manage",
                     style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                )
-                Row(
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    TextButton(onClick = { exportLauncher.launch("simple-todos-export.json") }) {
-                        Icon(Icons.Default.FileDownload, contentDescription = null)
-                        Text("Export", modifier = Modifier.padding(start = 6.dp))
-                    }
-                    TextButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
-                        Icon(Icons.Default.FileUpload, contentDescription = null)
-                        Text("Import", modifier = Modifier.padding(start = 6.dp))
-                    }
+                        .weight(1f)
+                        .padding(vertical = 8.dp),
+                )
+            },
+        )
+
+        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionLabel("Appearance")
+            Spacer(modifier = Modifier.height(8.dp))
+            ThemeModeSelector(themeMode = themeMode, onThemeModeChange = onThemeModeChange)
+
+            Spacer(modifier = Modifier.height(20.dp))
+            SectionLabel("Lists")
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                TextButton(onClick = { exportLauncher.launch("simple-todos-export.json") }) {
+                    Icon(Icons.Default.FileDownload, contentDescription = null)
+                    Text("Export", modifier = Modifier.padding(start = 6.dp))
                 }
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(bottom = 8.dp))
+                TextButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
+                    Icon(Icons.Default.FileUpload, contentDescription = null)
+                    Text("Import", modifier = Modifier.padding(start = 6.dp))
+                }
             }
         }
 
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding()
-                .pointerInput(dragDropState) {
-                    detectDragGesturesAfterLongPress(
-                        onDragStart = { offset -> dragDropState.onDragStart(offset) },
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            dragDropState.onDrag(dragAmount)
-                            if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
-                            dragDropState.checkForOverScroll()
-                                .takeIf { it != 0f }
-                                ?.let {
-                                    overscrollJob = scope.launch {
-                                        dragDropState.state.animateScrollBy(it * 1.3f, tween(easing = FastOutLinearInEasing))
-                                    }
-                                } ?: overscrollJob?.cancel()
-                        },
-                        onDragEnd = {
-                            dragDropState.onDragInterrupted()
-                            overscrollJob?.cancel()
-                            viewModel.reorderLists(localLists.value)
-                        },
-                        onDragCancel = {
-                            dragDropState.onDragInterrupted()
-                            overscrollJob?.cancel()
-                        },
-                    )
-                },
-        ) {
-            itemsIndexed(localLists.value, key = { _, list -> list.id.toString() }) { index, list ->
-                DraggableItem(dragDropState = dragDropState, index = index) {
-                    ManageListRow(
-                        list = list,
-                        onOpen = { onOpenList(index) },
-                        onRename = { newName -> viewModel.renameList(list, newName) },
-                        onDeleteRequest = { listPendingDelete = list },
-                    )
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                state = listState,
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .imePadding()
+                    .pointerInput(dragDropState) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { offset -> dragDropState.onDragStart(offset) },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                dragDropState.onDrag(dragAmount)
+                                if (overscrollJob?.isActive == true) return@detectDragGesturesAfterLongPress
+                                dragDropState.checkForOverScroll()
+                                    .takeIf { it != 0f }
+                                    ?.let {
+                                        overscrollJob = scope.launch {
+                                            dragDropState.state.animateScrollBy(it * 1.3f, tween(easing = FastOutLinearInEasing))
+                                        }
+                                    } ?: overscrollJob?.cancel()
+                            },
+                            onDragEnd = {
+                                dragDropState.onDragInterrupted()
+                                overscrollJob?.cancel()
+                                viewModel.reorderLists(localLists.value.map { it.list })
+                            },
+                            onDragCancel = {
+                                dragDropState.onDragInterrupted()
+                                overscrollJob?.cancel()
+                            },
+                        )
+                    },
+            ) {
+                itemsIndexed(localLists.value, key = { _, listWithItems -> listWithItems.list.id.toString() }) { index, listWithItems ->
+                    DraggableItem(dragDropState = dragDropState, index = index) { isDragging ->
+                        ManageListRow(
+                            list = listWithItems.list,
+                            itemCount = listWithItems.items.size,
+                            isDragging = isDragging,
+                            onOpen = { onOpenList(index) },
+                            onRename = { newName -> viewModel.renameList(listWithItems.list, newName) },
+                            onDeleteRequest = { listPendingDelete = listWithItems.list },
+                        )
+                    }
+                }
+                item(key = "add-list-card") {
+                    AddItemCard(text = "Add list", onClick = { viewModel.addList("New list") })
                 }
             }
-            item(key = "add-list-card") {
-                AddItemCard(text = "Add list", onClick = { viewModel.addList("New list") })
-            }
+            ScrollToEdgeButtons(listState = listState, scope = scope)
         }
     }
 
@@ -210,10 +242,49 @@ fun ManageListsScreen(
     }
 }
 
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ThemeModeSelector(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
+    val options = listOf(
+        Triple(ThemeMode.LIGHT, "Light", Icons.Default.LightMode),
+        Triple(ThemeMode.DARK, "Dark", Icons.Default.DarkMode),
+        Triple(ThemeMode.SYSTEM, "System", Icons.Default.SettingsBrightness),
+    )
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        options.forEachIndexed { index, (mode, label, icon) ->
+            SegmentedButton(
+                selected = themeMode == mode,
+                onClick = { onThemeModeChange(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                icon = {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(SegmentedButtonDefaults.IconSize),
+                    )
+                },
+            ) {
+                Text(label)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ManageListRow(
     list: TodoList,
+    itemCount: Int,
+    isDragging: Boolean,
     onOpen: () -> Unit,
     onRename: (String) -> Unit,
     onDeleteRequest: () -> Unit,
@@ -222,7 +293,17 @@ private fun ManageListRow(
     var text by remember(list.id) { mutableStateOf(list.name) }
     LaunchedEffect(list.name) { if (!isEditing) text = list.name }
 
-    Card(elevation = CardDefaults.cardElevation(defaultElevation = 1.dp), modifier = Modifier.fillMaxWidth()) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDragging) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                CardDefaults.cardColors().containerColor
+            },
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragging) 6.dp else 1.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -280,6 +361,8 @@ private fun ManageListRow(
                     colors = TextFieldDefaults.colors(
                         unfocusedContainerColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
                     ),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
@@ -295,9 +378,20 @@ private fun ManageListRow(
                     modifier = Modifier
                         .weight(1f)
                         .padding(vertical = 16.dp)
-                        .clickable { isEditing = true },
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { isEditing = true },
+                        ),
                 )
             }
+
+            Text(
+                text = itemCount.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
 
             IconButton(onClick = onOpen) {
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open list")
