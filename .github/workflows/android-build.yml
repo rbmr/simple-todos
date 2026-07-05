@@ -1,10 +1,5 @@
 name: Android Build
 
-# Reusable workflow: the single source of truth for building a signed release
-# APK. preflight.yml (PRs into main) and release.yml (pushes to main) both
-# call this workflow, so a green preflight run is proof the release build
-# will also succeed — they execute the identical job.
-
 on:
   workflow_call:
     outputs:

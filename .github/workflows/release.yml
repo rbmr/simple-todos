@@ -1,9 +1,5 @@
 name: Release
 
-# On every push to main: build the signed release APK (same reusable job
-# preflight.yml runs on PRs) and publish it as a GitHub Release asset —
-# the standard place to distribute a standalone APK from a GitHub repo.
-
 on:
   push:
     branches: [main]
