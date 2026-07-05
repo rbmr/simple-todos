@@ -1,0 +1,13 @@
+name: Preflight
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/android-build.yml
+    secrets: inherit
