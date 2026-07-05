@@ -66,28 +66,6 @@ class TodoRepository(private val db: AppDatabase) {
         itemDao.updateAll(orderedItems.mapIndexed { index, item -> item.copy(order = index) })
     }
 
-    /**
-     * Moves [item] into [targetListId] at [newIndex], re-numbering both the source and
-     * destination list orders. If the move is within the same list this behaves like a reorder.
-     */
-    suspend fun moveItem(item: TodoItem, targetListId: UUID, newIndex: Int) {
-        if (item.todoListId == targetListId) {
-            val siblings = itemDao.getByListOnce(targetListId).filter { it.id != item.id }.toMutableList()
-            val insertAt = newIndex.coerceIn(0, siblings.size)
-            siblings.add(insertAt, item)
-            reorderItems(siblings)
-        } else {
-            val destination = itemDao.getByListOnce(targetListId).toMutableList()
-            val insertAt = newIndex.coerceIn(0, destination.size)
-            val moved = item.copy(todoListId = targetListId)
-            destination.add(insertAt, moved)
-            itemDao.updateAll(destination.mapIndexed { index, it -> it.copy(order = index) })
-
-            val source = itemDao.getByListOnce(item.todoListId).filter { it.id != item.id }
-            itemDao.updateAll(source.mapIndexed { index, it -> it.copy(order = index) })
-        }
-    }
-
     suspend fun exportJson(): String {
         val lists = listDao.getAllOnce()
         val items = itemDao.getAllOnce()

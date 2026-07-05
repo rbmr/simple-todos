@@ -44,7 +44,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
@@ -70,9 +69,6 @@ fun TodoListScreen(
     onAddItem: ((TodoItem) -> Unit) -> Unit,
     onRenameList: (String) -> Unit,
     onMarkAllFinished: (Boolean) -> Unit,
-    onTransferItem: (TodoItem, Int) -> Unit,
-    hasPreviousList: Boolean,
-    hasNextList: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val list = listWithItems.list
@@ -86,9 +82,7 @@ fun TodoListScreen(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var overscrollJob by remember { mutableStateOf<Job?>(null) }
-    var containerWidthPx by remember { mutableStateOf(0f) }
     val density = LocalDensity.current
-    val edgeZonePx = with(density) { 56.dp.toPx() }
 
     val dragDropState = rememberDragDropState(
         lazyListState = listState,
@@ -99,32 +93,6 @@ fun TodoListScreen(
             }
         },
     )
-
-    // Dragging an item to within `edgeZonePx` of the left/right edge for a sustained moment
-    // transfers it into the adjacent list (see TodoApp's onTransferItem for the page switch).
-    val edgeDirection by remember(hasPreviousList, hasNextList) {
-        derivedStateOf {
-            when {
-                !dragDropState.isDragging -> 0
-                dragDropState.lastPointerX < edgeZonePx && hasPreviousList -> -1
-                dragDropState.lastPointerX > containerWidthPx - edgeZonePx && hasNextList -> 1
-                else -> 0
-            }
-        }
-    }
-    LaunchedEffect(edgeDirection) {
-        if (edgeDirection != 0) {
-            delay(450)
-            val idx = dragDropState.currentIndexOfDraggedItem
-            val current = localItems.value
-            if (idx != null && idx < current.size) {
-                val item = current[idx]
-                localItems.value = current.toMutableList().apply { removeAt(idx) }
-                dragDropState.onDragInterrupted()
-                onTransferItem(item, edgeDirection)
-            }
-        }
-    }
 
     // Keep the item being edited visible above the keyboard: when the IME opens (or the
     // edited item changes, e.g. chaining new items) scroll it into view.
@@ -154,7 +122,6 @@ fun TodoListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding()
-                .onSizeChanged { containerWidthPx = it.width.toFloat() }
                 .pointerInputDragReorder(
                     dragDropState = dragDropState,
                     scope = scope,
@@ -211,7 +178,7 @@ private fun Modifier.pointerInputDragReorder(
             onDragStart = { offset -> dragDropState.onDragStart(offset) },
             onDrag = { change, dragAmount ->
                 change.consume()
-                dragDropState.onDrag(dragAmount, change.position.x)
+                dragDropState.onDrag(dragAmount)
 
                 if (overscrollJobHolder()?.isActive == true) return@detectDragGesturesAfterLongPress
 

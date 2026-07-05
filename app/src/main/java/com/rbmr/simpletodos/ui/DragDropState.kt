@@ -74,10 +74,6 @@ class DragDropState internal constructor(
     private var draggedDistance by mutableStateOf(0f)
     private var draggingItemInitialOffset by mutableStateOf(0)
 
-    /** Latest horizontal pointer position (in the drag container's coordinate space), for edge-of-screen detection. */
-    var lastPointerX by mutableStateOf(0f)
-        private set
-
     internal val draggingItemOffset: Float
         get() = draggingItemLayoutInfo?.let { item -> draggingItemInitialOffset + draggedDistance - item.offset } ?: 0f
 
@@ -128,9 +124,8 @@ class DragDropState internal constructor(
         initiallyDraggedElement = null
     }
 
-    fun onDrag(offset: Offset, pointerX: Float) {
+    fun onDrag(offset: Offset) {
         draggedDistance += offset.y
-        lastPointerX = pointerX
 
         val (topOffset, bottomOffset) = initialOffsets ?: return
         val startOffset = topOffset + draggedDistance
