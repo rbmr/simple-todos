@@ -1,0 +1,17 @@
+name: Preflight
+
+# Runs the exact same build used for release (android-build.yml) against
+# every PR into main. A green run here guarantees the release workflow will
+# also succeed on merge, since both call the identical reusable job.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    uses: ./.github/workflows/android-build.yml
+    secrets: inherit

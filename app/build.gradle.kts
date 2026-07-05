@@ -13,6 +13,11 @@ val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) load(keystorePropertiesFile.inputStream())
 }
 
+fun signingProperty(key: String, envVar: String): String? =
+    System.getenv(envVar) ?: keystoreProperties.getProperty(key)
+
+val hasSigningConfig = keystorePropertiesFile.exists() || System.getenv("ANDROID_KEYSTORE_PATH") != null
+
 android {
     namespace = "com.rbmr.simpletodos"
     compileSdk = 34
@@ -29,11 +34,13 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
-                storePassword = keystoreProperties.getProperty("storePassword")
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
+            if (hasSigningConfig) {
+                val storeFilePath = System.getenv("ANDROID_KEYSTORE_PATH")
+                    ?: keystoreProperties.getProperty("storeFile")
+                storeFile = rootProject.file(storeFilePath!!)
+                storePassword = signingProperty("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = signingProperty("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword = signingProperty("keyPassword", "ANDROID_KEY_PASSWORD")
             }
         }
     }
@@ -42,7 +49,7 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (keystorePropertiesFile.exists()) {
+            if (hasSigningConfig) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }

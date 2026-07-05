@@ -12,3 +12,8 @@ captures/
 *.ap_
 *.dex
 .kotlin/
+
+# Signing (never commit real keystores/credentials)
+/keystore.properties
+/keystore/*.jks
+/keystore/*.keystore
