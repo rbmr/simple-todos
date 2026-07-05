@@ -12,9 +12,3 @@ captures/
 *.ap_
 *.dex
 .kotlin/
-
-# Signing (never commit — needed to publish updates under the same identity)
-keystore.properties
-keystore/
-*.jks
-*.keystore
